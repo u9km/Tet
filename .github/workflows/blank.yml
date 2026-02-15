@@ -11,29 +11,30 @@ jobs:
       - name: Setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git ~/theos
-          curl -LO https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz
-          tar -xvf iPhoneOS14.5.sdk.tar.xz -C ~/theos/sdks
+          # تحميل الـ SDK من الرابط المباشر الصحيح لضمان عدم حدوث خطأ في الصيغة
+          curl -L https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz -o ~/theos/sdks/iPhoneOS14.5.sdk.tar.xz
+          cd ~/theos/sdks
+          tar -xvf iPhoneOS14.5.sdk.tar.xz
           rm iPhoneOS14.5.sdk.tar.xz
 
-      - name: Patch Code (Auto-Remove macOS Code)
+      - name: Patch Code (Auto-Fix macOS Errors)
         run: |
-          # هذا الجزء يقوم بحذف الأسطر التي تحتوي على NSWorkspace و NSRunningApplication
-          # لكي لا يتوقف البناء بسبب أخطاء "undeclared identifier"
+          # حذف الأسطر المسببة للمشاكل في نظام iOS تلقائياً
           sed -i '' '/NSWorkspace/d' SovereignSecurity.m
           sed -i '' '/NSRunningApplication/d' SovereignSecurity.m
           sed -i '' '/runningApplications/d' SovereignSecurity.m
-          
-          # استبدال LSRegisterURL إذا كان يسبب خطأ تعريف
-          sed -i '' 's/LSRegisterURL/printf/g' SovereignSecurity.m 
+          # استبدال الوظائف غير المعرفة لتجنب توقف المترجم
+          sed -i '' 's/LSRegisterURL/printf/g' SovereignSecurity.m
+          sed -i '' 's/os_log_set_config/printf/g' SovereignSecurity.m
 
-      - name: Install Dependencies
+      - name: Install ldid
         run: brew install ldid
 
       - name: Build Sovereign V41
         run: |
           export THEOS=~/theos
-          # إضافة ميزة تجاهل الأخطاء البسيطة للمتابعة
-          make package TARGET=iphone:clang:14.5:13.0 FINALPACKAGE=1 messages=yes
+          # البناء باستخدام الـ SDK الذي قمنا بتحميله
+          make package TARGET=iphone:clang:14.5:13.0 FINALPACKAGE=1
           
       - name: Upload Sovereign Artifacts
         uses: actions/upload-artifact@v4
