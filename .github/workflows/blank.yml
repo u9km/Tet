@@ -1,0 +1,23 @@
+name: build_sovereign_v41_final
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Theos
+        run: git clone --recursive https://github.com/theos/theos.git ~/theos
+      - name: Install Dependencies
+        run: brew install ldid # حل مشكلة command not found
+      - name: Build Sovereign V41
+        run: |
+          export THEOS=~/theos
+          make package
+      - name: Upload Sovereign Artifacts
+        uses: actions/upload-artifact@v4 # حل مشكلة deprecated version
+        with:
+          name: SovereignV41-Full-Package
+          path: |
+            packages/*.deb
+            .theos/obj/debug/*.dylib
+            .theos/obj/*.dylib
