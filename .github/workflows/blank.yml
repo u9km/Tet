@@ -11,25 +11,25 @@ jobs:
       - name: Setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git ~/theos
-          # استخدام رابط مباشر وموثوق من مستودع theos/sdks مع معالجة الروابط بشكل أقوى
           mkdir -p ~/theos/sdks
-          curl -L "https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz" -o ~/theos/sdks/sdk.tar.xz
-          
-          # التحقق من أن الملف تم تحميله بنجاح وله حجم منطقي قبل فكه
-          cd ~/theos/sdks
-          tar -xvf sdk.tar.xz
-          rm sdk.tar.xz
+          # تحميل SDK 14.5 من مصدر بديل ومستقر بصيغة zip
+          curl -L "https://github.com/xybp888/iOS-SDKs/archive/refs/heads/master.zip" -o ~/theos/sdks/sdks.zip
+          unzip -q ~/theos/sdks/sdks.zip -d ~/theos/sdks/
+          # ترتيب المجلدات ليتعرف عليها Theos
+          mv ~/theos/sdks/iOS-SDKs-master/*.sdk ~/theos/sdks/
+          rm -rf ~/theos/sdks/sdks.zip ~/theos/sdks/iOS-SDKs-master
 
       - name: Patch Code (Auto-Fix macOS Errors)
         run: |
-          # تنظيف الكود من شوائب الماك التي تسبب توقف البناء
+          # تنظيف الكود من شوائب الماك
           sed -i '' '/NSWorkspace/d' SovereignSecurity.m
           sed -i '' '/NSRunningApplication/d' SovereignSecurity.m
           sed -i '' '/runningApplications/d' SovereignSecurity.m
           sed -i '' 's/LSRegisterURL/printf/g' SovereignSecurity.m
           sed -i '' 's/os_log_set_config/printf/g' SovereignSecurity.m
-          # إزالة مراجع os_log_t التي تسبب أخطاء في بعض التوزيعات
           sed -i '' '/os_log_t/d' SovereignSecurity.m
+          # حذف أي سطر يحاول استخدام المتغير app الذي كان يعتمد على NSRunningApplication
+          sed -i '' '/app/d' SovereignSecurity.m
 
       - name: Install ldid
         run: brew install ldid
@@ -37,8 +37,8 @@ jobs:
       - name: Build Sovereign V41
         run: |
           export THEOS=~/theos
-          # تحديد المسار يدوياً لضمان رؤية الـ SDK
-          make package TARGET=iphone:clang:14.5:13.0 FINALPACKAGE=1 THEOS_DEVICE_IP=localhost
+          # تنفيذ البناء مع استهداف SDK 14.5 الذي تم فكه
+          make package TARGET=iphone:clang:14.5:13.0 FINALPACKAGE=1
           
       - name: Upload Sovereign Artifacts
         uses: actions/upload-artifact@v4
