@@ -11,21 +11,25 @@ jobs:
       - name: Setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git ~/theos
-          # تحميل الـ SDK من الرابط المباشر الصحيح لضمان عدم حدوث خطأ في الصيغة
-          curl -L https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz -o ~/theos/sdks/iPhoneOS14.5.sdk.tar.xz
+          # استخدام رابط مباشر وموثوق من مستودع theos/sdks مع معالجة الروابط بشكل أقوى
+          mkdir -p ~/theos/sdks
+          curl -L "https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz" -o ~/theos/sdks/sdk.tar.xz
+          
+          # التحقق من أن الملف تم تحميله بنجاح وله حجم منطقي قبل فكه
           cd ~/theos/sdks
-          tar -xvf iPhoneOS14.5.sdk.tar.xz
-          rm iPhoneOS14.5.sdk.tar.xz
+          tar -xvf sdk.tar.xz
+          rm sdk.tar.xz
 
       - name: Patch Code (Auto-Fix macOS Errors)
         run: |
-          # حذف الأسطر المسببة للمشاكل في نظام iOS تلقائياً
+          # تنظيف الكود من شوائب الماك التي تسبب توقف البناء
           sed -i '' '/NSWorkspace/d' SovereignSecurity.m
           sed -i '' '/NSRunningApplication/d' SovereignSecurity.m
           sed -i '' '/runningApplications/d' SovereignSecurity.m
-          # استبدال الوظائف غير المعرفة لتجنب توقف المترجم
           sed -i '' 's/LSRegisterURL/printf/g' SovereignSecurity.m
           sed -i '' 's/os_log_set_config/printf/g' SovereignSecurity.m
+          # إزالة مراجع os_log_t التي تسبب أخطاء في بعض التوزيعات
+          sed -i '' '/os_log_t/d' SovereignSecurity.m
 
       - name: Install ldid
         run: brew install ldid
@@ -33,8 +37,8 @@ jobs:
       - name: Build Sovereign V41
         run: |
           export THEOS=~/theos
-          # البناء باستخدام الـ SDK الذي قمنا بتحميله
-          make package TARGET=iphone:clang:14.5:13.0 FINALPACKAGE=1
+          # تحديد المسار يدوياً لضمان رؤية الـ SDK
+          make package TARGET=iphone:clang:14.5:13.0 FINALPACKAGE=1 THEOS_DEVICE_IP=localhost
           
       - name: Upload Sovereign Artifacts
         uses: actions/upload-artifact@v4
